@@ -4572,6 +4572,106 @@ static int binder_ioctl_get_node_debug_info(struct binder_proc *proc,
 	return 0;
 }
 
+static int binder_ioctl_write_read(struct file *filp,
+				unsigned int cmd, unsigned long arg,
+				struct binder_thread *thread)
+{
+	int ret = 0;
+	struct binder_proc *proc = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct binder_write_read bwr;
+
+	if (size != sizeof(struct binder_write_read)) {
+		ret = -EINVAL;
+		goto out;
+	}
+	if (copy_from_user(&bwr, ubuf, sizeof(bwr))) {
+		ret = -EFAULT;
+		goto out;
+	}
+	binder_debug(BINDER_DEBUG_READ_WRITE,
+		     "%d:%d write %lld at %016llx, read %lld at %016llx\n",
+		     proc->pid, thread->pid,
+		     (u64)bwr.write_size, (u64)bwr.write_buffer,
+		     (u64)bwr.read_size, (u64)bwr.read_buffer);
+
+	if (bwr.write_size > 0) {
+		ret = binder_thread_write(proc, thread,
+					  bwr.write_buffer,
+					  bwr.write_size,
+					  &bwr.write_consumed);
+		trace_binder_write_done(ret);
+		if (ret < 0) {
+			bwr.read_consumed = 0;
+			if (copy_to_user(ubuf, &bwr, sizeof(bwr)))
+				ret = -EFAULT;
+			goto out;
+		}
+	}
+	if (bwr.read_size > 0) {
+		ret = binder_thread_read(proc, thread, bwr.read_buffer,
+					 bwr.read_size,
+					 &bwr.read_consumed,
+					 filp->f_flags & O_NONBLOCK);
+		trace_binder_read_done(ret);
+		if (!list_empty(&proc->todo))
+			wake_up_interruptible(&proc->wait);
+		if (ret < 0) {
+			if (copy_to_user(ubuf, &bwr, sizeof(bwr)))
+				ret = -EFAULT;
+			goto out;
+		}
+	}
+	binder_debug(BINDER_DEBUG_READ_WRITE,
+		     "%d:%d wrote %lld of %lld, read return %lld of %lld\n",
+		     proc->pid, thread->pid,
+		     (u64)bwr.write_consumed, (u64)bwr.write_size,
+		     (u64)bwr.read_consumed, (u64)bwr.read_size);
+	if (copy_to_user(ubuf, &bwr, sizeof(bwr))) {
+		ret = -EFAULT;
+		goto out;
+	}
+out:
+	return ret;
+}
+
+static int binder_ioctl_set_ctx_mgr(struct file *filp)
+{
+	int ret = 0;
+	struct binder_proc *proc = filp->private_data;
+	kuid_t curr_euid = current_euid();
+
+	if (binder_context_mgr_node != NULL) {
+		pr_err("BINDER_SET_CONTEXT_MGR already set\n");
+		ret = -EBUSY;
+		goto out;
+	}
+	if (uid_valid(binder_context_mgr_uid)) {
+		if (!uid_eq(binder_context_mgr_uid, curr_euid)) {
+			pr_err("BINDER_SET_CONTEXT_MGR bad uid %d != %d\n",
+			       from_kuid(&init_user_ns, curr_euid),
+			       from_kuid(&init_user_ns,
+					binder_context_mgr_uid));
+			ret = -EPERM;
+			goto out;
+		}
+	} else {
+		binder_context_mgr_uid = curr_euid;
+	}
+	binder_context_mgr_node = binder_new_node(proc, 0, 0);
+	if (binder_context_mgr_node == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	binder_context_mgr_node->local_weak_refs++;
+	binder_context_mgr_node->local_strong_refs++;
+	binder_context_mgr_node->has_strong_ref = 1;
+	binder_context_mgr_node->has_weak_ref = 1;
+out:
+	return ret;
+}
+
 static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret;
@@ -4582,8 +4682,6 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	/*pr_info("binder_ioctl: %d:%d %x %lx\n",
 			proc->pid, current->pid, cmd, arg);*/
-
-	binder_selftest_alloc(&proc->alloc);
 
 	trace_binder_ioctl(cmd, arg);
 
@@ -4601,6 +4699,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case BINDER_WRITE_READ:
 		ret = binder_ioctl_write_read(filp, cmd, arg, thread);
 		if (ret)
+<<<<<<< HEAD
 			goto err;
 		break;
 	case BINDER_SET_MAX_THREADS: {
@@ -4659,6 +4758,37 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
+=======
+			goto err;
+		break;
+	case BINDER_SET_MAX_THREADS:
+		if (copy_from_user(&proc->max_threads, ubuf, sizeof(proc->max_threads))) {
+			ret = -EINVAL;
+			goto err;
+		}
+		break;
+	case BINDER_SET_CONTEXT_MGR:
+		ret = binder_ioctl_set_ctx_mgr(filp);
+		if (ret)
+			goto err;
+		break;
+	case BINDER_THREAD_EXIT:
+		binder_debug(BINDER_DEBUG_THREADS, "%d:%d exit\n",
+			     proc->pid, thread->pid);
+		binder_free_thread(proc, thread);
+		thread = NULL;
+		break;
+	case BINDER_VERSION:
+		if (size != sizeof(struct binder_version)) {
+			ret = -EINVAL;
+			goto err;
+		}
+		if (put_user(BINDER_CURRENT_PROTOCOL_VERSION, &((struct binder_version *)ubuf)->protocol_version)) {
+			ret = -EINVAL;
+			goto err;
+		}
+		break;
+>>>>>>> 14f553d0885 (staging: android: binder.c: binder_ioctl() cleanup)
 	default:
 		ret = -EINVAL;
 		goto err;
