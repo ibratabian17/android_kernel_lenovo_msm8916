@@ -2089,7 +2089,7 @@ static void binder_send_failed_reply(struct binder_transaction *t,
 			     "send failed reply for transaction %d, target dead\n",
 			     t->debug_id);
 
-		binder_free_transaction(t);
+		binder_pop_transaction(target_thread, t);
 		if (next == NULL) {
 			binder_debug(BINDER_DEBUG_DEAD_BINDER,
 				     "reply failed, no target thread at root\n");
