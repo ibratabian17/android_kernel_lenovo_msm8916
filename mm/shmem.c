@@ -1943,8 +1943,12 @@ restart:
 		}
 
 		if (need_resched()) {
+<<<<<<< HEAD
 			rcu_read_unlock();
 			rcu_read_lock();
+=======
+			cond_resched_rcu();
+>>>>>>> 91fdcd08cc6 (shm: wait for pins to be released when sealing)
 			start = iter.index + 1;
 			goto restart;
 		}
