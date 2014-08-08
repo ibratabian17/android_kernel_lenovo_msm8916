@@ -1534,7 +1534,7 @@ shmem_write_begin(struct file *file, struct address_space *mapping,
 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
 
 	/* i_mutex is held by caller */
-	if (unlikely(info->seals & (F_SEAL_WRITE | F_SEAL_GROW))) {
+	if (unlikely(info->seals)) {
 		if (info->seals & F_SEAL_WRITE)
 			return -EPERM;
 		if ((info->seals & F_SEAL_GROW) && pos + len > inode->i_size)
@@ -1911,6 +1911,7 @@ static loff_t shmem_file_llseek(struct file *file, loff_t offset, int whence)
 	return offset;
 }
 
+<<<<<<< HEAD
 /*
  * We need a tag: a new tag would expand every radix_tree_node by 8 bytes,
  * so reuse a tag which we firmly believe is never set or cleared on shmem.
@@ -2028,13 +2029,22 @@ continue_resched:
 	}
 
 	return error;
+=======
+static int shmem_wait_for_pins(struct address_space *mapping)
+{
+	return 0;
+>>>>>>> 8c6b2cd84de (shm: add sealing API)
 }
 
 #define F_ALL_SEALS (F_SEAL_SEAL | \
 		     F_SEAL_SHRINK | \
 		     F_SEAL_GROW | \
+<<<<<<< HEAD
 		     F_SEAL_WRITE | \
 		     F_SEAL_FUTURE_WRITE)
+=======
+		     F_SEAL_WRITE)
+>>>>>>> 8c6b2cd84de (shm: add sealing API)
 
 int shmem_add_seals(struct file *file, unsigned int seals)
 {
@@ -2158,7 +2168,11 @@ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
 		DECLARE_WAIT_QUEUE_HEAD_ONSTACK(shmem_falloc_waitq);
 
 		/* protected by i_mutex */
+<<<<<<< HEAD
 		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE)) {
+=======
+		if (info->seals & F_SEAL_WRITE) {
+>>>>>>> 8c6b2cd84de (shm: add sealing API)
 			error = -EPERM;
 			goto out;
 		}
