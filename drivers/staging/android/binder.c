@@ -2061,11 +2061,18 @@ static void binder_send_failed_reply(struct binder_transaction *t,
 	while (1) {
 		target_thread = binder_get_txn_from_and_acq_inner(t);
 		if (target_thread) {
-			binder_debug(BINDER_DEBUG_FAILED_TRANSACTION,
-				     "send failed reply for transaction %d to %d:%d\n",
-				      t->debug_id,
-				      target_thread->proc->pid,
-				      target_thread->pid);
+			if (target_thread->return_error != BR_OK &&
+			   target_thread->return_error2 == BR_OK) {
+				target_thread->return_error2 =
+					target_thread->return_error;
+				target_thread->return_error = BR_OK;
+			}
+			if (target_thread->return_error == BR_OK) {
+				binder_debug(BINDER_DEBUG_FAILED_TRANSACTION,
+					     "send failed reply for transaction %d to %d:%d\n",
+					      t->debug_id,
+					      target_thread->proc->pid,
+					      target_thread->pid);
 
 			binder_pop_transaction_ilocked(target_thread, t);
 			if (target_thread->reply_error.cmd == BR_OK) {
