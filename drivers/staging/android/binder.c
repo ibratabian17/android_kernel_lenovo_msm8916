@@ -3920,17 +3920,16 @@ retry:
 		struct binder_transaction *t = NULL;
 		struct binder_thread *t_from;
 
-		binder_inner_proc_lock(proc);
-		if (!binder_worklist_empty_ilocked(&thread->todo))
-			list = &thread->todo;
-		else if (!binder_worklist_empty_ilocked(&proc->todo) &&
-			   wait_for_proc_work)
-			list = &proc->todo;
-		else {
-			binder_inner_proc_unlock(proc);
-
+		if (!list_empty(&thread->todo)) {
+			w = list_first_entry(&thread->todo, struct binder_work,
+					     entry);
+		} else if (!list_empty(&proc->todo) && wait_for_proc_work) {
+			w = list_first_entry(&proc->todo, struct binder_work,
+					     entry);
+		} else {
 			/* no data added */
-			if (ptr - buffer == 4 && !thread->looper_need_return)
+			if (ptr - buffer == 4 &&
+			    !(thread->looper & BINDER_LOOPER_STATE_NEED_RETURN))
 				goto retry;
 			break;
 		}
