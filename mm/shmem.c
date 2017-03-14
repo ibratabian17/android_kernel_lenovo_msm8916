@@ -1945,11 +1945,16 @@ restart:
 
 		if (need_resched()) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			rcu_read_unlock();
 			rcu_read_lock();
 =======
 			cond_resched_rcu();
 >>>>>>> 91fdcd08cc6 (shm: wait for pins to be released when sealing)
+=======
+			rcu_read_unlock();
+			rcu_read_lock();
+>>>>>>> eb458eff400 (mm: shmem: Reschedule by unlocking and relocking RCU because of missing API)
 			start = iter.index + 1;
 			goto restart;
 		}
