@@ -1534,8 +1534,9 @@ shmem_write_begin(struct file *file, struct address_space *mapping,
 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
 
 	/* i_mutex is held by caller */
-	if (unlikely(info->seals & (F_SEAL_WRITE | F_SEAL_GROW))) {
-		if (info->seals & F_SEAL_WRITE)
+	if (unlikely(info->seals & (F_SEAL_GROW |
+				   F_SEAL_WRITE | F_SEAL_FUTURE_WRITE))) {
+		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE))
 			return -EPERM;
 		if ((info->seals & F_SEAL_GROW) && pos + len > inode->i_size)
 			return -EPERM;
@@ -2045,11 +2046,16 @@ static int shmem_wait_for_pins(struct address_space *mapping)
 		     F_SEAL_SHRINK | \
 		     F_SEAL_GROW | \
 <<<<<<< HEAD
+<<<<<<< HEAD
 		     F_SEAL_WRITE | \
 		     F_SEAL_FUTURE_WRITE)
 =======
 		     F_SEAL_WRITE)
 >>>>>>> 8c6b2cd84de (shm: add sealing API)
+=======
+		     F_SEAL_WRITE | \
+		     F_SEAL_FUTURE_WRITE)
+>>>>>>> 03b95684590 (BACKPORT: mm: Add an F_SEAL_FUTURE_WRITE seal to memfd)
 
 int shmem_add_seals(struct file *file, unsigned int seals)
 {
@@ -2174,10 +2180,14 @@ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
 
 		/* protected by i_mutex */
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE)) {
 =======
 		if (info->seals & F_SEAL_WRITE) {
 >>>>>>> 8c6b2cd84de (shm: add sealing API)
+=======
+		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE)) {
+>>>>>>> 03b95684590 (BACKPORT: mm: Add an F_SEAL_FUTURE_WRITE seal to memfd)
 			error = -EPERM;
 			goto out;
 		}
